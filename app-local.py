@@ -93,7 +93,6 @@ def seed_admin():
         db.session.commit()
 
 
-# school/app.py
-# ... (todo o seu conteúdo atual, com create_app(), seed_admin(), etc.)
-
-app = create_app()  # <-- deixe APENAS isso no final
+if __name__ == "__main__":
+    app = create_app()
+    app.run(debug=True)
