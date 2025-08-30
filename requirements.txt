@@ -7,12 +7,14 @@ Flask-SQLAlchemy==3.1.1
 SQLAlchemy==2.0.36
 itsdangerous==2.2.0
 email-validator==2.2.0
+Jinja2==3.1.4
+Werkzeug==3.1.3
 
-# --- Streamlit (para painel/verificação no Streamlit Cloud) ---
+# --- Streamlit (somente para painel/verificação no Streamlit Cloud) ---
 streamlit==1.49.1
 
-# --- Deploy server (apenas fora do Windows) ---
+# --- Deploy server (não usado no Streamlit, mas útil para Render/Railway; evita instalar no Windows) ---
 gunicorn==22.0.0 ; platform_system != "Windows"
 
-# --- Postgres driver (apenas fora do Windows; use se definir DATABASE_URL) ---
-psycopg2-binary==2.9.9 ; platform_system != "Windows"
+# NÃO instalar driver de Postgres aqui.
+# Se um dia for usar Postgres no Streamlit, troque para o arquivo da opção B.
