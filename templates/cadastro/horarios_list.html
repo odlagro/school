@@ -1,0 +1,44 @@
+<!-- school/templates/cadastro/horarios_list.html -->
+{% extends 'base.html' %}
+{% block title %}Horários — School{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h4 mb-0">Horários</h1>
+  {% if current_user.role == 'Diretoria' %}
+    <a class="btn btn-success btn-sm" href="{{ url_for('cadastro.horarios_new') }}">+ Novo Horário</a>
+  {% endif %}
+</div>
+
+<div class="table-responsive bg-light rounded p-2">
+  <table class="table table-sm align-middle mb-0">
+    <thead>
+      <tr>
+        <th>Hora início</th>
+        <th>Hora fim</th>
+        {% if current_user.role == 'Diretoria' %}<th class="text-end">Ações</th>{% endif %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for it in items %}
+      <tr>
+        <td>{{ it.hora_inicio.strftime('%H:%M') if it.hora_inicio else '' }}</td>
+        <td>{{ it.hora_fim.strftime('%H:%M') if it.hora_fim else '' }}</td>
+        {% if current_user.role == 'Diretoria' %}
+        <td class="text-end">
+          <a class="btn btn-outline-primary btn-sm" href="{{ url_for('cadastro.horarios_edit', item_id=it.id) }}">Editar</a>
+          <form method="post" action="{{ url_for('cadastro.horarios_delete', item_id=it.id) }}" class="d-inline" onsubmit="return confirm('Confirma excluir este horário?');">
+            {{ delete_form.csrf_token }}
+            <button class="btn btn-outline-danger btn-sm" type="submit">Excluir</button>
+          </form>
+        </td>
+        {% endif %}
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="{{ 3 if current_user.role == 'Diretoria' else 2 }}" class="text-muted">Nenhum horário cadastrado.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

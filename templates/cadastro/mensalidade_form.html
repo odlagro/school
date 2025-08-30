@@ -1,0 +1,25 @@
+<!-- school/templates/cadastro/mensalidade_form.html -->
+{% extends 'base.html' %}
+{% block title %}{{ title or 'Mensalidade' }} — School{% endblock %}
+{% block content %}
+<h1 class="h4 mb-3">{{ title or 'Mensalidade' }}</h1>
+<form method="post" novalidate class="bg-light rounded p-3">
+  {{ form.csrf_token }}
+  <div class="row g-3">
+    <div class="col-md-6">
+      {{ form.serie.label(class="form-label") }}
+      {{ form.serie(class="form-control", placeholder="Ex.: 1º Ano A") }}
+      {% for e in form.serie.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+    </div>
+    <div class="col-md-4">
+      {{ form.valor.label(class="form-label") }}
+      {{ form.valor(class="form-control", placeholder="0.00", step="0.01") }}
+      {% for e in form.valor.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+    </div>
+  </div>
+  <div class="mt-3 d-flex gap-2">
+    {{ form.submit(class="btn btn-primary") }}
+    <a class="btn btn-secondary" href="{{ url_for('cadastro.mensalidades_list') }}">Cancelar</a>
+  </div>
+</form>
+{% endblock %}

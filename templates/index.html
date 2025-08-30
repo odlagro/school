@@ -1,0 +1,11 @@
+<!-- school/templates/index.html -->
+{% extends 'base.html' %}
+{% block title %}School — Início{% endblock %}
+{% block content %}
+  <div class="p-4 bg-light rounded">
+    <h1 class="h3 mb-3">{{ custom_title or 'Bem-vindo ao School' }}</h1>
+    <p class="text-muted mb-0">
+      Use a navegação acima para acessar as funções do sistema.
+    </p>
+  </div>
+{% endblock %}

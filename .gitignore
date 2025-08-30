@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtualenv
+.venv/
+
+# Logs/temporários
+*.log
+*.tmp
+
+# SQLite: ignore todos .db, exceto o school.db
+*.db
+!school.db
+
+# Outras bases comuns (se não usar, mantém ignorado)
+*.sqlite
+*.sqlite3
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# Credenciais locais
+.env
+instance/

@@ -1,0 +1,25 @@
+<!-- school/templates/cadastro/horario_form.html -->
+{% extends 'base.html' %}
+{% block title %}{{ title or 'Horário' }} — School{% endblock %}
+{% block content %}
+<h1 class="h4 mb-3">{{ title or 'Horário' }}</h1>
+<form method="post" novalidate class="bg-light rounded p-3">
+  {{ form.csrf_token }}
+  <div class="row g-3">
+    <div class="col-sm-6 col-md-4">
+      {{ form.hora_inicio.label(class="form-label") }}
+      {{ form.hora_inicio(class="form-control", placeholder="08:00") }}
+      {% for e in form.hora_inicio.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+    </div>
+    <div class="col-sm-6 col-md-4">
+      {{ form.hora_fim.label(class="form-label") }}
+      {{ form.hora_fim(class="form-control", placeholder="12:00") }}
+      {% for e in form.hora_fim.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+    </div>
+  </div>
+  <div class="mt-3 d-flex gap-2">
+    {{ form.submit(class="btn btn-primary") }}
+    <a class="btn btn-secondary" href="{{ url_for('cadastro.horarios_list') }}">Cancelar</a>
+  </div>
+</form>
+{% endblock %}
