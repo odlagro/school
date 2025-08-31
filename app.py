@@ -1,162 +1,96 @@
-﻿# app.py
-from __future__ import annotations
-
-import os
+﻿import os
 from datetime import datetime
-from flask import Flask, render_template, render_template_string, url_for
-from flask_login import login_required, current_user
+from flask import Flask, render_template, redirect, url_for
+from flask_login import login_required
 from werkzeug.middleware.proxy_fix import ProxyFix
 
+from config import Config
 from extensions import db, login_manager, csrf
+from models import User
 
-
-# =========================
-# Configuração
-# =========================
+# Blueprints obrigatórios / opcionais
+from auth import auth_bp  # login/logout/troca de senha/CRUD de usuários
 try:
-    from config import Config as ExternalConfig  # type: ignore
+    # Caso você tenha o módulo "cadastro" (horários / mensalidades), registramos também
+    from cadastro import cadastro_bp  # opcional
 except Exception:
-    ExternalConfig = None
+    cadastro_bp = None
 
 
-class FallbackConfig:
-    SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-key-change-me")
-    SQLALCHEMY_DATABASE_URI = os.environ.get(
-        "DATABASE_URL",
-        "sqlite:///school.db"
-    )
-    SQLALCHEMY_TRACK_MODIFICATIONS = False
-
-
-Config = ExternalConfig or FallbackConfig
-
-
-# =========================
-# Factory
-# =========================
 def create_app() -> Flask:
-    app = Flask(__name__, template_folder="templates", static_folder="static")
+    app = Flask(__name__)
     app.config.from_object(Config)
 
-    # Reverse proxy (Railway/Render/Nginx)
-    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
+    # Para ambientes por trás de proxy (Railway/Render/etc.)
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1, x_prefix=1)
 
     # Extensões
     db.init_app(app)
     login_manager.init_app(app)
     csrf.init_app(app)
 
+    # Flask-Login
     login_manager.login_view = "auth.login"
     login_manager.login_message_category = "warning"
 
-    # Models/Loader
-    from models import User  # noqa: WPS433
-
     @login_manager.user_loader
     def load_user(user_id: str):
+        if not user_id:
+            return None
         try:
-            return db.session.get(User, int(user_id))
+            return User.query.get(int(user_id))
         except Exception:
             return None
 
-    # Helper: evita BuildError se endpoint ainda não existir
-    def url_or_hash(endpoint: str, **values) -> str:
-        from werkzeug.routing import BuildError
-        try:
-            return url_for(endpoint, **values)
-        except BuildError:
-            return "#"
-
-    app.jinja_env.globals["url_or_hash"] = url_or_hash
-    app.jinja_env.globals["now"] = datetime.utcnow
-
-    # Registrar blueprints se existirem
-    def _safe_register(import_path: str, bp_attr: str):
-        try:
-            mod = __import__(import_path, fromlist=[bp_attr])
-            bp = getattr(mod, bp_attr)
-            app.register_blueprint(bp)
-        except Exception:
-            pass
-
-    _safe_register("auth", "auth_bp")
-    _safe_register("users", "users_bp")
-    _safe_register("cadastro", "cadastro_bp")
+    # Blueprints
+    app.register_blueprint(auth_bp, url_prefix="")
+    if cadastro_bp is not None:
+        app.register_blueprint(cadastro_bp, url_prefix="/cadastro")
 
     # Rotas básicas
     @app.route("/")
     @login_required
     def home():
-        try:
-            return render_template("home.html")
-        except Exception:
-            return render_template_string(
-                """
-                {% extends "base.html" %}
-                {% block title %}Início{% endblock %}
-                {% block content %}
-                  <div class="container mt-4">
-                    <h2>Bem-vindo ao School</h2>
-                    <p>Use o menu <strong>Cadastro</strong> para acessar as funcionalidades.</p>
-                  </div>
-                {% endblock %}
-                """
-            )
+        return render_template("home.html")
 
-    # Criar tabelas + SEED do usuário padrão
+    # Contexto global (ex.: ano atual)
+    @app.context_processor
+    def inject_now():
+        return {"now": datetime.utcnow()}
+
+    # Criação de tabelas + seed do usuário padrão
     with app.app_context():
-        try:
-            db.create_all()
-        except Exception as e:
-            app.logger.warning(f"db.create_all() falhou: {e}")
-
-        # --------- SEED: usuário padrão Diretoria ----------
-        try:
-            from sqlalchemy import select
-
-            default_email = "diretoria@school.com"
-            existing = db.session.execute(
-                select(User).filter_by(email=default_email)
-            ).scalar_one_or_none()
-
-            if existing is None:
-                user = User(
-                    email=default_email,
-                    role="Diretoria",
-                    is_active=True,
-                )
-                user.set_password("123456")  # senha padrão
-                db.session.add(user)
-                db.session.commit()
-                app.logger.info(
-                    "Usuário padrão criado: diretoria@school.com / 123456"
-                )
-            else:
-                changed = False
-                if existing.role != "Diretoria":
-                    existing.role = "Diretoria"
-                    changed = True
-                if not existing.is_active:
-                    existing.is_active = True
-                    changed = True
-                if changed:
-                    db.session.commit()
-                    app.logger.info("Usuário padrão ajustado (role/ativo).")
-        except Exception as e:
-            app.logger.warning(f"Seed do usuário padrão falhou: {e}")
-        # ---------------------------------------------------
+        db.create_all()
+        _seed_default_admin(app)
 
     return app
 
 
-# =========================
-# Execução local
-# =========================
-app = create_app()
+def _seed_default_admin(app: Flask) -> None:
+    """
+    Cria o usuário padrão (Diretoria) caso não exista.
+    Email: diretoria@school.com
+    Senha: 123456
+    """
+    try:
+        email = "diretoria@school.com"
+        user = User.query.filter_by(email=email).first()
+        if not user:
+            user = User(email=email, role="Diretoria", is_active=True)
+            user.set_password("123456")
+            db.session.add(user)
+            db.session.commit()
+            app.logger.info("Usuário padrão criado: %s", email)
+    except Exception as e:
+        # Logar com stacktrace para facilitar debug no deploy
+        app.logger.exception("Seed do usuário padrão falhou")
+        # Não levantamos a exceção aqui para não derrubar o app em produção.
+        # Se preferir falhar duro durante o deploy, troque para: raise
 
+
+# Ponto de entrada
 if __name__ == "__main__":
-    app.run(
-        host="0.0.0.0",
-        port=int(os.environ.get("PORT", "5000")),
-        debug=True,
-    )
+    app = create_app()
+    # Em produção (Railway/Render) use o servidor do PaaS; localmente pode usar debug.
+    debug = os.environ.get("FLASK_DEBUG", "0") == "1"
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", "5000")), debug=debug)
