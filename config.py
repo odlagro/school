@@ -1,41 +1,32 @@
-﻿# school/config.py
-import os
-import tempfile
+﻿import os
+from pathlib import Path
 
-def _get_secret(name: str, default=None):
-    # 1º tenta variáveis de ambiente; no Streamlit, st.secrets abaixo
-    val = os.environ.get(name)
-    if val is not None:
-        return val
-    try:
-        import streamlit as st
-        return st.secrets.get(name, default)
-    except Exception:
+def _bool_env(name: str, default: bool) -> bool:
+    v = os.getenv(name)
+    if v is None:
         return default
-
+    return v.lower() in ("1", "true", "yes", "on")
 
 class Config:
-    SECRET_KEY = _get_secret("SECRET_KEY", "dev-secret-key-change-me")
+    # Chave de sessão
+    SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key-change-me")
 
-    db_url = _get_secret("DATABASE_URL")
-    if db_url:
-        # normaliza URLs antigas e força driver psycopg (v3)
-        if db_url.startswith("postgres://"):
-            db_url = db_url.replace("postgres://", "postgresql+psycopg://", 1)
-        elif db_url.startswith("postgresql://") and "+psycopg" not in db_url and "+psycopg2" not in db_url:
-            db_url = db_url.replace("postgresql://", "postgresql+psycopg://", 1)
-        SQLALCHEMY_DATABASE_URI = db_url
+    # Banco (SQLite por padrão; se tiver DATABASE_URL no Railway, usa)
+    DATABASE_URL = os.getenv("DATABASE_URL")
+    if DATABASE_URL:
+        SQLALCHEMY_DATABASE_URI = DATABASE_URL
     else:
-        # Sem DATABASE_URL: usa SQLite num diretório JÁ gravável (sem criar pasta)
-        # Ordem de preferência: DATA_DIR (secreto), /tmp, tempdir do SO, $HOME
-        candidates = [
-            _get_secret("DATA_DIR"),
-            "/tmp",
-            tempfile.gettempdir(),
-            os.path.expanduser("~"),
-        ]
-        data_dir = next((c for c in candidates if c and os.path.isdir(c) and os.access(c, os.W_OK)), "/tmp")
-        db_path = os.path.join(data_dir, "school.db")
-        SQLALCHEMY_DATABASE_URI = f"sqlite:///{db_path}"
+        data_dir = os.getenv("DATA_DIR", "./instance")
+        Path(data_dir).mkdir(parents=True, exist_ok=True)
+        SQLALCHEMY_DATABASE_URI = f"sqlite:///{Path(data_dir) / 'school.db'}"
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+
+    # Cookies e proxy (produção = HTTPS)
+    SESSION_COOKIE_SAMESITE = "Lax"
+    SESSION_COOKIE_SECURE = _bool_env("SESSION_COOKIE_SECURE", True)
+    REMEMBER_COOKIE_SECURE = _bool_env("REMEMBER_COOKIE_SECURE", True)
+    PREFERRED_URL_SCHEME = os.getenv("PREFERRED_URL_SCHEME", "https")
+
+    # WTForms/CSRF
+    WTF_CSRF_ENABLED = True

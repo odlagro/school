@@ -1,5 +1,5 @@
 ﻿from flask import Blueprint
 
-auth_bp = Blueprint("auth", __name__, template_folder="../templates/auth")
-
-from . import routes  # mantém essa importação no final
+auth_bp = Blueprint("auth", __name__)
+# As rotas ficam em routes.py
+from . import routes  # noqa: E402,F401

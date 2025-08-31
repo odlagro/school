@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Login · School{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-md-6 col-lg-4">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title mb-3">Acesso ao sistema</h5>
+        <form method="post" novalidate>
+          {{ form.hidden_tag() }}
+          <div class="mb-3">
+            {{ form.email.label(class="form-label") }}
+            {{ form.email(class="form-control", placeholder="seu@email.com") }}
+            {% for e in form.email.errors %}
+              <div class="text-danger small">{{ e }}</div>
+            {% endfor %}
+          </div>
+          <div class="mb-3">
+            {{ form.password.label(class="form-label") }}
+            {{ form.password(class="form-control", placeholder="Senha (mín. 6)") }}
+            {% for e in form.password.errors %}
+              <div class="text-danger small">{{ e }}</div>
+            {% endfor %}
+          </div>
+          <div class="form-check mb-3">
+            {{ form.remember(class="form-check-input", id="remember") }}
+            <label class="form-check-label" for="remember">Lembrar-me</label>
+          </div>
+          {{ form.submit(class="btn btn-primary w-100") }}
+        </form>
+        <hr>
+        <div class="small text-muted">
+          Acesso padrão: <code>diretoria@school.com</code> / <code>123456</code>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

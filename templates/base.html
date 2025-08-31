@@ -1,127 +1,62 @@
 <!doctype html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
   <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>{% block title %}School{% endblock %}</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <!-- Bootstrap 5 (CDN) -->
-  <link
-    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-    rel="stylesheet"
-    integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
-    crossorigin="anonymous"
-  />
-  {% block head %}{% endblock %}
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
   <style>
-    body { padding-top: 70px; }
-    .navbar-brand { font-weight: 600; }
+    body { padding-top: 4.5rem; }
   </style>
 </head>
 <body>
-  <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
-    <div class="container-fluid">
-      <a class="navbar-brand" href="{{ url_for('home') }}">School</a>
-
-      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav"
-              aria-controls="mainNav" aria-expanded="false" aria-label="Alternar navegação">
-        <span class="navbar-toggler-icon"></span>
-      </button>
-
-      <div class="collapse navbar-collapse" id="mainNav">
-        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-          {% if current_user.is_authenticated %}
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+  <div class="container-fluid">
+    <a class="navbar-brand" href="{{ url_for('index') }}">School</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#topnav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div id="topnav" class="collapse navbar-collapse">
+      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+        {% if current_user.is_authenticated %}
+          <!-- Coloque aqui outros menus do sistema -->
+        {% endif %}
+      </ul>
+      <ul class="navbar-nav ms-auto">
+        {% if current_user.is_authenticated %}
           <li class="nav-item">
-            <a class="nav-link" href="{{ url_for('home') }}">Início</a>
-          </li>
-
-          <!-- Menu Cadastro -->
-          <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle" href="#" id="cadastroDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-              Cadastro
-            </a>
-            <ul class="dropdown-menu" aria-labelledby="cadastroDropdown">
-              <!-- Usuário -->
-              <li><h6 class="dropdown-header">Usuário</h6></li>
-
-              <li>
-                <a class="dropdown-item" href="{{ url_for('auth.list_users') }}">Listar usuários</a>
-              </li>
-
-              {% if current_user.role == 'Diretoria' %}
-              <li>
-                <a class="dropdown-item" href="{{ url_for('auth.create_user') }}">Criar novo usuário</a>
-              </li>
-              {% endif %}
-
-              <li>
-                <a class="dropdown-item" href="{{ url_for('auth.change_password') }}">Trocar senha</a>
-              </li>
-
-              <li><hr class="dropdown-divider"></li>
-
-              <!-- Horários -->
-              <li><h6 class="dropdown-header">Horários</h6></li>
-              <li><a class="dropdown-item" href="{{ url_for('cadastro.list_horarios') if 'cadastro.list_horarios' in current_app.view_functions else '#' }}">Listar</a></li>
-              {% if current_user.role == 'Diretoria' %}
-              <li><a class="dropdown-item" href="{{ url_for('cadastro.create_horario') if 'cadastro.create_horario' in current_app.view_functions else '#' }}">Novo</a></li>
-              {% endif %}
-
-              <li><hr class="dropdown-divider"></li>
-
-              <!-- Mensalidade -->
-              <li><h6 class="dropdown-header">Mensalidade</h6></li>
-              <li><a class="dropdown-item" href="{{ url_for('cadastro.list_mensalidades') if 'cadastro.list_mensalidades' in current_app.view_functions else '#' }}">Listar</a></li>
-              {% if current_user.role == 'Diretoria' %}
-              <li><a class="dropdown-item" href="{{ url_for('cadastro.create_mensalidade') if 'cadastro.create_mensalidade' in current_app.view_functions else '#' }}">Novo</a></li>
-              {% endif %}
-            </ul>
-          </li>
-          {% endif %}
-        </ul>
-
-        <!-- Lado direito: usuário logado -->
-        <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
-          {% if current_user.is_authenticated %}
-          <li class="nav-item">
-            <span class="navbar-text text-light me-3">
-              {{ current_user.email }} — <strong>{{ current_user.role }}</strong>
+            <span class="navbar-text me-3">
+              {{ current_user.email }} · {{ current_user.role }}
             </span>
           </li>
           <li class="nav-item">
             <a class="nav-link" href="{{ url_for('auth.logout') }}">Sair</a>
           </li>
-          {% else %}
-          <li class="nav-item">
-            <a class="nav-link" href="{{ url_for('auth.login') }}">Entrar</a>
-          </li>
-          {% endif %}
-        </ul>
-      </div>
+        {% else %}
+          <li class="nav-item"><a class="nav-link" href="{{ url_for('auth.login') }}">Entrar</a></li>
+        {% endif %}
+      </ul>
     </div>
-  </nav>
+  </div>
+</nav>
 
-  <main class="container">
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        <div class="mt-2">
-          {% for category, message in messages %}
-            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-              {{ message }}
-              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
-            </div>
-          {% endfor %}
-        </div>
-      {% endif %}
-    {% endwith %}
+<main class="container">
+  {% with msgs = get_flashed_messages(with_categories=true) %}
+    {% if msgs %}
+      <div class="mt-2">
+        {% for cat, msg in msgs %}
+          <div class="alert alert-{{ cat }} alert-dismissible fade show" role="alert">
+            {{ msg }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
 
-    {% block content %}{% endblock %}
-  </main>
+  {% block content %}{% endblock %}
+</main>
 
-  <script
-    src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
-    integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
-    crossorigin="anonymous"
-  ></script>
-  {% block scripts %}{% endblock %}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
