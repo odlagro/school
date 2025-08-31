@@ -1,0 +1,51 @@
+{# templates/users/create.html #}
+{% extends "base.html" %}
+{% block title %}Criar Usuário{% endblock %}
+
+{% block content %}
+<div class="container mt-4" style="max-width: 720px;">
+  <h2 class="mb-3">Criar Usuário</h2>
+
+  <form method="POST" novalidate>
+    {{ form.hidden_tag() }}
+
+    <div class="mb-3">
+      <label class="form-label">Email</label>
+      {{ form.email(class_="form-control", placeholder="email@dominio.com") }}
+      {% for e in form.email.errors %}
+        <div class="text-danger small">{{ e }}</div>
+      {% endfor %}
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Perfil</label>
+      {{ form.role(class_="form-select") }}
+      {% for e in form.role.errors %}
+        <div class="text-danger small">{{ e }}</div>
+      {% endfor %}
+    </div>
+
+    <div class="row">
+      <div class="col-md-6 mb-3">
+        <label class="form-label">Senha (6 dígitos)</label>
+        {{ form.password(class_="form-control", placeholder="ex: 123456") }}
+        {% for e in form.password.errors %}
+          <div class="text-danger small">{{ e }}</div>
+        {% endfor %}
+      </div>
+      <div class="col-md-6 mb-3">
+        <label class="form-label">Confirmar Senha</label>
+        {{ form.confirm(class_="form-control") }}
+        {% for e in form.confirm.errors %}
+          <div class="text-danger small">{{ e }}</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="d-flex gap-2">
+      <button class="btn btn-primary" type="submit">{{ form.submit.label.text }}</button>
+      <a class="btn btn-light" href="{{ url_for('users.list_users') }}">Cancelar</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

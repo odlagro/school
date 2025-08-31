@@ -1,0 +1,68 @@
+{# templates/users/list.html #}
+{% extends "base.html" %}
+{% block title %}Usuários{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2 class="mb-3">Usuários</h2>
+
+  <div class="d-flex justify-content-between mb-3">
+    <div></div>
+    <a class="btn btn-primary" href="{{ url_for('users.create_user') }}">+ Novo Usuário</a>
+  </div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <div class="table-responsive">
+    <table class="table table-striped align-middle">
+      <thead>
+        <tr>
+          <th>Email</th>
+          <th>Perfil</th>
+          <th>Status</th>
+          <th>Criado em</th>
+          <th style="width: 180px;">Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for u in users %}
+        <tr>
+          <td>{{ u.email }}</td>
+          <td>{{ u.role }}</td>
+          <td>
+            {% if u.is_active %}
+              <span class="badge text-bg-success">Ativo</span>
+            {% else %}
+              <span class="badge text-bg-secondary">Inativo</span>
+            {% endif %}
+          </td>
+          <td>{{ (u.created_at or '') }}</td>
+          <td>
+            <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('users.edit_user', user_id=u.id) }}">Editar</a>
+            <form method="POST" action="{{ url_for('users.delete_user', user_id=u.id) }}" style="display:inline;">
+              {{ delete_form.hidden_tag() }}
+              <button class="btn btn-sm btn-outline-danger" type="submit" onclick="return confirm('Excluir este usuário?');">
+                Excluir
+              </button>
+            </form>
+          </td>
+        </tr>
+      {% else %}
+        <tr>
+          <td colspan="5" class="text-center">Nenhum usuário encontrado.</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

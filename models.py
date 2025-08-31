@@ -1,50 +1,85 @@
-﻿# school/models.py
-from datetime import datetime
-from flask_login import UserMixin
+﻿# models.py
+from __future__ import annotations
+
+from datetime import datetime, time
 from werkzeug.security import generate_password_hash, check_password_hash
-from sqlalchemy import Numeric
+from flask_login import UserMixin
+
 from extensions import db
 
-
-class User(UserMixin, db.Model):
+# =========================
+# Usuário
+# =========================
+class User(db.Model, UserMixin):
     __tablename__ = "users"
 
     id = db.Column(db.Integer, primary_key=True)
-    email = db.Column(db.String(255), unique=True, nullable=False)
+    email = db.Column(db.String(255), nullable=False, unique=True, index=True)
     password_hash = db.Column(db.String(255), nullable=False)
-    name = db.Column(db.String(255))
-    role = db.Column(db.String(32), nullable=False)  # Diretoria, Professor, Aluno, Pai
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    role = db.Column(db.String(32), nullable=False, default="Aluno")  # Diretoria, Professor, Aluno, Pai
+    is_active = db.Column(db.Boolean, nullable=False, default=True)
 
-    def set_password(self, raw_password: str) -> None:
-        self.password_hash = generate_password_hash(raw_password)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    def check_password(self, raw_password: str) -> bool:
-        return check_password_hash(self.password_hash, raw_password)
+    # Métodos de senha
+    def set_password(self, raw: str) -> None:
+        self.password_hash = generate_password_hash(raw)
 
-    def get_id(self) -> str:
-        return str(self.id)
+    def check_password(self, raw: str) -> bool:
+        return check_password_hash(self.password_hash, raw)
+
+    # Flask-Login: ativo?
+    def is_active_user(self) -> bool:
+        return bool(self.is_active)
+
+    # Flask-Login usa is_active como property
+    @property
+    def is_active(self):  # type: ignore[override]
+        return self.__dict__["is_active"]
+
+    @is_active.setter
+    def is_active(self, value: bool):
+        self.__dict__["is_active"] = bool(value)
+
+    def __repr__(self) -> str:  # debug
+        return f"<User {self.id} {self.email} ({self.role})>"
 
 
+# =========================
+# Horários
+# =========================
 class Horario(db.Model):
     __tablename__ = "horarios"
 
     id = db.Column(db.Integer, primary_key=True)
-    hora_inicio = db.Column(db.Time, nullable=False)
-    hora_fim = db.Column(db.Time, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    hora_inicio = db.Column(db.Time, nullable=False)  # time
+    hora_fim = db.Column(db.Time, nullable=False)     # time
+
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def as_range_str(self) -> str:
+        def fmt(t: time) -> str:
+            return t.strftime("%H:%M")
+        return f"{fmt(self.hora_inicio)} - {fmt(self.hora_fim)}"
 
     def __repr__(self) -> str:
-        return f"<Horario {self.hora_inicio}-{self.hora_fim}>"
+        return f"<Horario {self.id} {self.as_range_str()}>"
 
 
+# =========================
+# Mensalidade
+# =========================
 class Mensalidade(db.Model):
     __tablename__ = "mensalidades"
 
     id = db.Column(db.Integer, primary_key=True)
     serie = db.Column(db.String(120), nullable=False)
-    valor = db.Column(Numeric(10, 2), nullable=False)  # usar Decimal do WTForms no form
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    valor = db.Column(db.Numeric(10, 2), nullable=False)
+
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def __repr__(self) -> str:
-        return f"<Mensalidade {self.serie} R${self.valor}>"
+        return f"<Mensalidade {self.id} {self.serie} R${self.valor}>"

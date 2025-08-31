@@ -1,99 +1,136 @@
-﻿# school/app.py
-from flask import Flask, render_template
+﻿# app.py
+from __future__ import annotations
+
+import os
+from datetime import datetime
+from flask import Flask, render_template, render_template_string, redirect, url_for, flash
 from flask_login import login_required, current_user
 from werkzeug.middleware.proxy_fix import ProxyFix
-from datetime import datetime
 
-from config import Config
+# Extensões compartilhadas
 from extensions import db, login_manager, csrf
-from models import User
-from auth import auth_bp
-from auth.utils import roles_required
-from cadastro import cadastro_bp
+
+# =========================
+# Configuração
+# =========================
+try:
+    # Se existir config.py com class Config, usamos.
+    from config import Config as ExternalConfig  # type: ignore
+except Exception:
+    ExternalConfig = None  # fallback mais abaixo
 
 
-def create_app():
-    app = Flask(__name__)
+class FallbackConfig:
+    """Config padrão caso não exista config.Config.
+    - SECRET_KEY: puxa do ambiente ou usa um valor dev
+    - DB: SQLite local (ou path relativo)
+    """
+    SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-key-change-me")
+    SQLALCHEMY_DATABASE_URI = os.environ.get(
+        "DATABASE_URL",
+        "sqlite:///school.db"  # em Railway com volume, ajuste se necessário
+    )
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+
+
+Config = ExternalConfig or FallbackConfig
+
+
+# =========================
+# Factory
+# =========================
+def create_app() -> Flask:
+    app = Flask(__name__, template_folder="templates", static_folder="static")
     app.config.from_object(Config)
 
-    # Útil se publicar atrás de proxy (Render/Railway)
+    # Reverse proxy (Railway/Render/Nginx)
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
 
-    # Extensões
+    # Inicializa extensões
     db.init_app(app)
     login_manager.init_app(app)
     csrf.init_app(app)
 
-    # Blueprints
-    app.register_blueprint(auth_bp)
-    app.register_blueprint(cadastro_bp, url_prefix="/cadastro")
+    # Login settings
+    login_manager.login_view = "auth.login"  # ajuste se seu endpoint for diferente
+    login_manager.login_message_category = "warning"
 
-    # Criação automática do banco + seed inicial
-    with app.app_context():
-        db.create_all()
-        seed_admin()
+    # Registrar models para o user_loader
+    from models import User  # noqa: WPS433 (import dentro da factory)
 
-    # Rotas principais
+    @login_manager.user_loader
+    def load_user(user_id: str):
+        try:
+            return db.session.get(User, int(user_id))
+        except Exception:
+            return None
+
+    # Helper para evitar BuildError quando um endpoint ainda não existe
+    # Ex.: {{ url_or_hash('users.list_users') }}
+    def url_or_hash(endpoint: str, **values) -> str:
+        from werkzeug.routing import BuildError
+        try:
+            return url_for(endpoint, **values)
+        except BuildError:
+            return "#"
+
+    app.jinja_env.globals["url_or_hash"] = url_or_hash
+    app.jinja_env.globals["now"] = datetime.utcnow
+
+    # Registra blueprints de forma segura (só se existirem)
+    def _safe_register(import_path: str, bp_attr: str):
+        try:
+            mod = __import__(import_path, fromlist=[bp_attr])
+            bp = getattr(mod, bp_attr)
+            app.register_blueprint(bp)
+        except Exception:
+            # Não interrompe o app se o módulo/blueprint ainda não existir
+            pass
+
+    # auth (login/logout)
+    _safe_register("auth", "auth_bp")
+    # usuários (CRUD + trocar senha)
+    _safe_register("users", "users_bp")
+    # cadastros (horários/mensalidades) — ajuste ao seu projeto
+    _safe_register("cadastro", "cadastro_bp")
+
+    # Rotas básicas
     @app.route("/")
     @login_required
-    def index():
-        return render_template(
-            "index.html",
-            user=current_user,
-            now=datetime.utcnow(),
-        )
+    def home():
+        # Tenta renderizar home.html; se não existir, usa um fallback simples
+        try:
+            return render_template("home.html")
+        except Exception:
+            return render_template_string(
+                """
+                {% extends "base.html" %}
+                {% block title %}Início{% endblock %}
+                {% block content %}
+                  <div class="container mt-4">
+                    <h2>Bem-vindo ao School</h2>
+                    <p>Use o menu <strong>Cadastro</strong> para acessar as funcionalidades.</p>
+                  </div>
+                {% endblock %}
+                """
+            )
 
-    # Áreas de exemplo com RBAC
-    @app.route("/area-diretoria")
-    @login_required
-    @roles_required("Diretoria")
-    def area_diretoria():
-        return render_template(
-            "index.html",
-            user=current_user,
-            custom_title="Área da Diretoria",
-        )
-
-    @app.route("/area-professor")
-    @login_required
-    @roles_required("Diretoria", "Professor")
-    def area_professor():
-        return render_template(
-            "index.html",
-            user=current_user,
-            custom_title="Área do Professor",
-        )
-
-    # Tratamento simples para 403
-    @app.errorhandler(403)
-    def forbidden(_):
-        return (
-            render_template(
-                "index.html",
-                user=current_user,
-                custom_title="Acesso negado (403)",
-            ),
-            403,
-        )
+    # Cria tabelas automaticamente (útil em dev/local)
+    with app.app_context():
+        try:
+            db.create_all()
+        except Exception as e:
+            # Evita quebrar o app em providers onde não há permissão no FS
+            # (ex.: se usar Postgres externo, ignore create_all e use migrations)
+            app.logger.warning(f"db.create_all() falhou: {e}")
 
     return app
 
 
-@login_manager.user_loader
-def load_user(user_id):
-    return User.query.get(int(user_id))
+# =========================
+# Execução local
+# =========================
+app = create_app()
 
-
-def seed_admin():
-    """Cria um usuário default da Diretoria se não existir."""
-    if not User.query.filter_by(email="diretoria@school.com").first():
-        u = User(email="diretoria@school.com", name="Diretor(a) School", role="Diretoria")
-        u.set_password("123456")
-        db.session.add(u)
-        db.session.commit()
-
-
-# school/app.py
-# ... (todo o seu conteúdo atual, com create_app(), seed_admin(), etc.)
-
-app = create_app()  # <-- deixe APENAS isso no final
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", "5000")), debug=True)
