@@ -1,18 +1,20 @@
 ﻿import os
 from datetime import datetime
+
 from flask import Flask, render_template, redirect, url_for
-from flask_login import login_required
 from werkzeug.middleware.proxy_fix import ProxyFix
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
 from config import Config
 from extensions import db, login_manager, csrf
 from models import User
 
-# Blueprints obrigatórios / opcionais
-from auth import auth_bp  # login/logout/troca de senha/CRUD de usuários
+# Blueprints do projeto
+from auth import auth_bp
 try:
-    # Caso você tenha o módulo "cadastro" (horários / mensalidades), registramos também
-    from cadastro import cadastro_bp  # opcional
+    # Se existir o módulo de cadastros (horários, mensalidades, etc.)
+    from cadastro import cadastro_bp
 except Exception:
     cadastro_bp = None
 
@@ -21,44 +23,38 @@ def create_app() -> Flask:
     app = Flask(__name__)
     app.config.from_object(Config)
 
-    # Para ambientes por trás de proxy (Railway/Render/etc.)
-    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1, x_prefix=1)
+    # Quando roda atrás de proxy (Railway/Render/etc.)
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
-    # Extensões
+    # Inicializa extensões
     db.init_app(app)
     login_manager.init_app(app)
     csrf.init_app(app)
 
-    # Flask-Login
-    login_manager.login_view = "auth.login"
-    login_manager.login_message_category = "warning"
-
-    @login_manager.user_loader
-    def load_user(user_id: str):
-        if not user_id:
-            return None
-        try:
-            return User.query.get(int(user_id))
-        except Exception:
-            return None
-
-    # Blueprints
+    # Registra blueprints
     app.register_blueprint(auth_bp, url_prefix="")
     if cadastro_bp is not None:
         app.register_blueprint(cadastro_bp, url_prefix="/cadastro")
 
-    # Rotas básicas
+    # Rotas simples
     @app.route("/")
-    @login_required
+    def index():
+        return redirect(url_for("auth.login"))
+
+    @app.route("/home")
     def home():
+        # Renderiza a página inicial pós-login
         return render_template("home.html")
 
-    # Contexto global (ex.: ano atual)
-    @app.context_processor
-    def inject_now():
-        return {"now": datetime.utcnow()}
+    # Loader do Flask-Login
+    @login_manager.user_loader
+    def load_user(user_id: str):
+        try:
+            return db.session.get(User, int(user_id))
+        except Exception:
+            return None
 
-    # Criação de tabelas + seed do usuário padrão
+    # Cria tabelas e faz seed do usuário padrão
     with app.app_context():
         db.create_all()
         _seed_default_admin(app)
@@ -71,26 +67,34 @@ def _seed_default_admin(app: Flask) -> None:
     Cria o usuário padrão (Diretoria) caso não exista.
     Email: diretoria@school.com
     Senha: 123456
+    Protegido contra condições de corrida (vários workers).
     """
+    email = "diretoria@school.com"
     try:
-        email = "diretoria@school.com"
-        user = User.query.filter_by(email=email).first()
-        if not user:
+        existing = db.session.execute(
+            select(User).filter_by(email=email)
+        ).scalar_one_or_none()
+
+        if existing is None:
             user = User(email=email, role="Diretoria", is_active=True)
             user.set_password("123456")
             db.session.add(user)
             db.session.commit()
             app.logger.info("Usuário padrão criado: %s", email)
-    except Exception as e:
-        # Logar com stacktrace para facilitar debug no deploy
+        else:
+            app.logger.info("Usuário padrão já existe: %s", email)
+
+    except IntegrityError:
+        # Outro worker criou ao mesmo tempo — tudo bem
+        db.session.rollback()
+        app.logger.info("Usuário padrão já existia (integrity).")
+    except Exception:
+        db.session.rollback()
         app.logger.exception("Seed do usuário padrão falhou")
-        # Não levantamos a exceção aqui para não derrubar o app em produção.
-        # Se preferir falhar duro durante o deploy, troque para: raise
 
 
-# Ponto de entrada
+# Ponto de entrada para gunicorn:  gunicorn -w 1 "app:create_app()"
 if __name__ == "__main__":
     app = create_app()
-    # Em produção (Railway/Render) use o servidor do PaaS; localmente pode usar debug.
-    debug = os.environ.get("FLASK_DEBUG", "0") == "1"
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", "5000")), debug=debug)
+    # Em produção use gunicorn. Este run é só para dev local.
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)), debug=True)
