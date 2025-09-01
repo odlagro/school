@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Página não encontrada{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <div class="card bg-dark text-white">
+    <div class="card-body">
+      <h1 class="h3 mb-3">404 - Página não encontrada</h1>
+      <p>A URL acessada não existe.</p>
+      <a class="btn btn-primary"
+         href="{{ url_for('auth.home') if current_user.is_authenticated else url_for('auth.login') }}">
+        Voltar
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}
