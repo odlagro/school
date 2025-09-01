@@ -1,0 +1,34 @@
+/* Tema escuro consistente */
+:root {
+  color-scheme: dark;
+}
+
+html, body {
+  background-color: #111 !important;
+  color: #e0e0e0 !important;
+}
+
+.navbar, footer {
+  background-color: #000 !important;
+}
+
+.card.bg-secondary-subtle {
+  background-color: #2b2f36 !important;
+}
+
+.card.bg-dark {
+  background-color: #181a1f !important;
+}
+
+a, .nav-link, .dropdown-item {
+  color: #d0d0ff;
+}
+
+a:hover, .nav-link:hover, .dropdown-item:hover {
+  color: #ffffff;
+}
+
+.btn-outline-light {
+  --bs-btn-hover-bg: #ffffff;
+  --bs-btn-hover-color: #000000;
+}

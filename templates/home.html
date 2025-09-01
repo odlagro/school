@@ -1,8 +1,35 @@
 {% extends "base.html" %}
 {% block title %}Home · School{% endblock %}
+
 {% block content %}
-<div class="p-4 bg-light border rounded-3">
-  <h4 class="mb-2">Bem-vindo(a) ao School</h4>
-  <p class="mb-0">Use o menu acima para navegar pelas funcionalidades.</p>
+<div class="row">
+  <div class="col-12 col-lg-8">
+    <div class="card bg-secondary-subtle text-light border-0 shadow-sm">
+      <div class="card-body">
+        <h4 class="card-title mb-3">Bem-vindo(a) ao School</h4>
+        <p class="mb-0">
+          Use o menu <strong>Cadastro</strong> para gerenciar <em>Usuários</em>, <em>Horários</em> e <em>Mensalidades</em>.
+        </p>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-lg-4 mt-3 mt-lg-0">
+    <div class="card bg-dark text-light border-0 shadow-sm">
+      <div class="card-body">
+        <h6 class="text-uppercase text-secondary mb-2">Sessão</h6>
+        <div class="d-flex align-items-center">
+          <div class="me-3">
+            <span class="badge bg-info text-dark">Logado</span>
+          </div>
+          <div>
+            <div class="small text-secondary">Usuário</div>
+            <div class="fw-semibold">{{ current_user.email }}</div>
+            <div class="small text-secondary mt-1">Perfil</div>
+            <div class="badge bg-secondary">{{ current_user.role or 'Usuário' }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 {% endblock %}

@@ -1,62 +1,132 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="pt-br" data-bs-theme="dark">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{% block title %}School{% endblock %}</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
-  <style>
-    body { padding-top: 4.5rem; }
-  </style>
+
+  <!-- Bootstrap 5 (tema escuro) -->
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+    integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
+    crossorigin="anonymous"
+  />
+
+  <!-- CSS dark da aplicação -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dark.css') }}">
+  {% block head %}{% endblock %}
 </head>
-<body>
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+<body class="bg-dark text-light">
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-black border-bottom border-secondary">
   <div class="container-fluid">
-    <a class="navbar-brand" href="{{ url_for('index') }}">School</a>
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#topnav">
-      <span class="navbar-toggler-icon"></span>
-    </button>
-    <div id="topnav" class="collapse navbar-collapse">
-      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-        {% if current_user.is_authenticated %}
-          <!-- Coloque aqui outros menus do sistema -->
-        {% endif %}
-      </ul>
-      <ul class="navbar-nav ms-auto">
-        {% if current_user.is_authenticated %}
+    <a class="navbar-brand fw-semibold" href="{{ url_for('index') }}">School</a>
+
+    {% if is_authenticated %}
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#topNavbar" aria-controls="topNavbar" aria-expanded="false" aria-label="Alterna navegação">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="topNavbar">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+
           <li class="nav-item">
-            <span class="navbar-text me-3">
-              {{ current_user.email }} · {{ current_user.role }}
+            <a class="nav-link" aria-current="page" href="{{ url_for('index') }}">Home</a>
+          </li>
+
+          <!-- Menu Cadastro -->
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="cadastroDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              Cadastro
+            </a>
+            <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="cadastroDropdown">
+
+              <!-- Usuários -->
+              <li>
+                <h6 class="dropdown-header">Usuários</h6>
+              </li>
+              <li>
+                <a class="dropdown-item" href="/usuarios">Listar</a>
+              </li>
+              {% if is_diretoria %}
+              <li>
+                <a class="dropdown-item" href="/usuarios/novo">Incluir</a>
+              </li>
+              {% endif %}
+              <li><hr class="dropdown-divider"></li>
+
+              <!-- Horários -->
+              <li>
+                <h6 class="dropdown-header">Horários</h6>
+              </li>
+              <li>
+                <a class="dropdown-item" href="/horarios">Listar</a>
+              </li>
+              {% if is_diretoria %}
+              <li>
+                <a class="dropdown-item" href="/horarios/novo">Incluir</a>
+              </li>
+              {% endif %}
+              <li><hr class="dropdown-divider"></li>
+
+              <!-- Mensalidade -->
+              <li>
+                <h6 class="dropdown-header">Mensalidade</h6>
+              </li>
+              <li>
+                <a class="dropdown-item" href="/mensalidades">Listar</a>
+              </li>
+              {% if is_diretoria %}
+              <li>
+                <a class="dropdown-item" href="/mensalidades/novo">Incluir</a>
+              </li>
+              {% endif %}
+
+            </ul>
+          </li>
+        </ul>
+
+        <!-- Lado direito: info do usuário + sair -->
+        <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+          <li class="nav-item me-3 d-flex align-items-center text-secondary small">
+            <span class="me-2">
+              {{ current_user.email }}
+            </span>
+            <span class="badge bg-secondary">
+              {{ current_user.role or 'Usuário' }}
             </span>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="{{ url_for('auth.logout') }}">Sair</a>
+            <a class="btn btn-outline-light btn-sm" href="/logout">Sair</a>
           </li>
-        {% else %}
-          <li class="nav-item"><a class="nav-link" href="{{ url_for('auth.login') }}">Entrar</a></li>
-        {% endif %}
-      </ul>
-    </div>
+        </ul>
+      </div>
+    {% endif %}
   </div>
 </nav>
 
-<main class="container">
-  {% with msgs = get_flashed_messages(with_categories=true) %}
-    {% if msgs %}
-      <div class="mt-2">
-        {% for cat, msg in msgs %}
-          <div class="alert alert-{{ cat }} alert-dismissible fade show" role="alert">
-            {{ msg }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-          </div>
-        {% endfor %}
-      </div>
+<main class="container my-4">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ 'warning' if category=='message' else category }} alert-dismissible fade show" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="Fechar"></button>
+        </div>
+      {% endfor %}
     {% endif %}
   {% endwith %}
 
   {% block content %}{% endblock %}
 </main>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<footer class="border-top border-secondary py-3 mt-auto bg-black text-center text-secondary small">
+  &copy; {{ 2025 }} School
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+        crossorigin="anonymous"></script>
+{% block scripts %}{% endblock %}
 </body>
 </html>
