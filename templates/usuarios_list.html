@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Usuários · School{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center mb-3">
+  <h3 class="mb-0">Usuários</h3>
+  {% if is_diretoria %}
+  <a class="btn btn-primary btn-sm ms-auto" href="{{ url_for('cadastro.usuarios_create') }}">Incluir</a>
+  {% endif %}
+</div>
+
+<div class="card bg-dark border-0 shadow-sm">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-dark table-hover table-striped align-middle mb-0">
+        <thead>
+          <tr>
+            <th>Email</th>
+            <th>Perfil</th>
+            <th>Status</th>
+            {% if is_diretoria %}<th class="text-end">Ações</th>{% endif %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for u in usuarios %}
+          <tr>
+            <td>{{ u.email }}</td>
+            <td>{{ u.role }}</td>
+            <td>
+              {% if u.active %}
+                <span class="badge bg-success">Ativo</span>
+              {% else %}
+                <span class="badge bg-secondary">Inativo</span>
+              {% endif %}
+            </td>
+            {% if is_diretoria %}
+            <td class="text-end">
+              <a href="{{ url_for('cadastro.usuarios_edit', user_id=u.id) }}" class="btn btn-sm btn-outline-light">Editar</a>
+              <form class="d-inline" action="{{ url_for('cadastro.usuarios_delete', user_id=u.id) }}" method="post"
+                    onsubmit="return confirm('Excluir este usuário?');">
+                {{ csrf_token() }}
+                <button type="submit" class="btn btn-sm btn-outline-danger">Excluir</button>
+              </form>
+            </td>
+            {% endif %}
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="4" class="text-center text-secondary py-4">Nenhum registro encontrado.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

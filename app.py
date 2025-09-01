@@ -21,9 +21,11 @@ def create_app():
 
     # Blueprints
     from auth import auth_bp
+    from cadastro import cadastro_bp
     app.register_blueprint(auth_bp)
+    app.register_blueprint(cadastro_bp)  # URLs: /usuarios, /horarios, /mensalidades
 
-    # Contexto para os templates (permite mostrar/esconder itens do menu)
+    # Variáveis de permissão para templates
     from flask_login import current_user
 
     @app.context_processor
@@ -33,7 +35,7 @@ def create_app():
             "is_diretoria": (current_user.is_authenticated and current_user.role == ROLE_DIRETORIA),
         }
 
-    # Banco + seed do usuário padrão fixo
+    # Banco + seed usuário padrão
     with app.app_context():
         db.create_all()
         _seed_or_fix_default_admin()
@@ -71,7 +73,7 @@ def _seed_or_fix_default_admin():
             if not user.active:
                 user.active = True
                 changed = True
-            # Mantém a senha padrão solicitada
+            # senha padrão conforme solicitado
             user.set_password("123456")
             changed = True
             if changed:

@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}{{ titulo }} · School{% endblock %}
+{% block content %}
+<h3 class="mb-3">{{ titulo }}</h3>
+
+<div class="card bg-dark border-0 shadow-sm">
+  <div class="card-body">
+    <form method="post" novalidate>
+      {{ form.csrf_token }}
+
+      <div class="mb-3">
+        <label class="form-label">{{ form.serie.label }}</label>
+        {{ form.serie(class="form-control", placeholder="Ex.: 6º Ano A") }}
+        {% for e in form.serie.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">{{ form.valor.label }}</label>
+        {{ form.valor(class="form-control", placeholder="0.00") }}
+        {% for e in form.valor.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+      </div>
+
+      <div class="d-flex">
+        <button type="submit" class="btn btn-primary">{{ form.submit.label.text }}</button>
+        <a href="{{ url_for('cadastro.mensalidades_list') }}" class="btn btn-outline-light ms-2">Cancelar</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
