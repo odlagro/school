@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Usuários - Lista{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">Usuários</h2>
+    <a class="btn btn-primary" href="{{ url_for('cadastro.usuarios_create') }}">
+      + Novo Usuário
+    </a>
+  </div>
+
+  <form class="row g-2 mb-3" method="get" action="{{ url_for('cadastro.usuarios_list') }}">
+    <div class="col-sm-8 col-md-6">
+      <input type="text" class="form-control" name="q" placeholder="Buscar por nome ou e-mail"
+             value="{{ q or '' }}">
+    </div>
+    <div class="col-auto">
+      <button class="btn btn-outline-light" type="submit">Buscar</button>
+    </div>
+  </form>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ 'warning' if category == 'warning' else category }} alert-dismissible fade show" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+        </div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <div class="table-responsive">
+    <table class="table table-dark table-striped table-hover align-middle mb-0">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Nome</th>
+          <th>E-mail</th>
+          <th>Perfil</th>
+          <th style="width: 180px;">Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in usuarios %}
+          <tr>
+            <td>{{ u.id }}</td>
+            <td>{{ u.name }}</td>
+            <td>{{ u.email }}</td>
+            <td>{{ u.role_label() if hasattr(u, 'role_label') else u.role }}</td>
+            <td>
+              <a class="btn btn-sm btn-outline-info"
+                 href="{{ url_for('cadastro.usuarios_edit', user_id=u.id) }}">
+                Editar
+              </a>
+
+              <form class="d-inline" method="post"
+                    action="{{ url_for('cadastro.usuarios_delete', user_id=u.id) }}"
+                    onsubmit="return confirm('Confirma excluir o usuário {{ u.email }}?');">
+                {{ csrf_token() }}
+                <button class="btn btn-sm btn-outline-danger" type="submit">Excluir</button>
+              </form>
+            </td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="5" class="text-center text-muted p-4">Nenhum usuário encontrado.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

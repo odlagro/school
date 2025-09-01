@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Usuários - {{ 'Editar' if form and form._obj else 'Novo' }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4" style="max-width: 720px;">
+  <h2 class="mb-3">
+    {{ 'Editar Usuário' if form and form._obj else 'Novo Usuário' }}
+  </h2>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ 'warning' if category == 'warning' else category }} alert-dismissible fade show" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+        </div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <form method="post" novalidate>
+    {{ form.hidden_tag() }}
+
+    <div class="mb-3">
+      <label class="form-label">Nome</label>
+      {{ form.name(class="form-control", placeholder="Nome completo") }}
+      {% for e in form.name.errors %}
+        <div class="text-danger small">{{ e }}</div>
+      {% endfor %}
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">E-mail</label>
+      {{ form.email(class="form-control", placeholder="email@exemplo.com") }}
+      {% for e in form.email.errors %}
+        <div class="text-danger small">{{ e }}</div>
+      {% endfor %}
+    </div>
+
+    {% if form.password is defined %}
+      <div class="mb-3">
+        <label class="form-label">Senha</label>
+        {{ form.password(class="form-control", placeholder="••••••") }}
+        {% if form._obj %}
+          <div class="form-text">Deixe em branco para manter a senha atual.</div>
+        {% endif %}
+        {% for e in form.password.errors %}
+          <div class="text-danger small">{{ e }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    {% if form.role is defined %}
+      <div class="mb-3">
+        <label class="form-label">Perfil</label>
+        {{ form.role(class="form-select") }}
+        {% for e in form.role.errors %}
+          <div class="text-danger small">{{ e }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <div class="d-flex gap-2">
+      <button type="submit" class="btn btn-primary">Salvar</button>
+      <a class="btn btn-secondary" href="{{ url_for('cadastro.usuarios_list') }}">Cancelar</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
