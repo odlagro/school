@@ -1,101 +1,78 @@
-﻿import logging
-import os
-from flask import Flask, render_template, redirect, url_for, request
+﻿# app.py
+from flask import Flask, render_template, redirect, url_for
 from werkzeug.middleware.proxy_fix import ProxyFix
+from datetime import datetime
+import logging
+import os
 
 from config import Config
-from extensions import db, csrf, login_manager
-from models import User, ROLE_DIRETORIA
+from extensions import db, login_manager, csrf
+from models import User
+from auth import auth_bp  # seu blueprint de autenticação
+from cadastro import cadastro_bp  # seus cadastros (usuarios/horarios/mensalidades)
 
+def create_app(config_class=Config):
+    app = Flask(__name__)
+    app.config.from_object(config_class)
 
-def create_app():
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+    # Proxy fix para plataforma (X-Forwarded-Proto/For/Host)
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
 
-    app = Flask(__name__, template_folder="templates", static_folder="static")
-    app.config.from_object(Config)
-    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
-
+    # Extensões
     db.init_app(app)
-    csrf.init_app(app)
     login_manager.init_app(app)
+    csrf.init_app(app)
 
     # Blueprints
-    from auth import auth_bp
-    from cadastro import cadastro_bp
-    app.register_blueprint(auth_bp)
-    app.register_blueprint(cadastro_bp)  # URLs: /usuarios, /horarios, /mensalidades
+    app.register_blueprint(auth_bp)        # /login, /logout etc
+    app.register_blueprint(cadastro_bp)    # /cadastro/... (usuarios, horarios, mensalidades)
 
-    # Variáveis de permissão para templates
-    from flask_login import current_user
-
-    @app.context_processor
-    def inject_permissions():
-        return {
-            "is_authenticated": current_user.is_authenticated,
-            "is_diretoria": (current_user.is_authenticated and current_user.role == ROLE_DIRETORIA),
-        }
-
-    # Banco + seed usuário padrão
-    with app.app_context():
-        db.create_all()
-        _seed_or_fix_default_admin()
-        _log_db_uri(app)
-
+    # Páginas
     @app.route("/")
     def index():
-        from flask_login import current_user
-        if not current_user.is_authenticated:
-            return redirect(url_for("auth.login"))
-        return render_template("home.html")
+        # Se quiser redirecionar p/ home autenticada:
+        return redirect(url_for("auth.home"))
 
-    @login_manager.unauthorized_handler
-    def _unauthorized():
-        return redirect(url_for("auth.login", next=request.path))
+    # Cria as tabelas e seed
+    with app.app_context():
+        db.create_all()
+        _seed_default_admin(app)
+
+    # Logs básicos
+    app.logger.setLevel(logging.INFO)
+    app.logger.info("App iniciado às %s", datetime.utcnow().isoformat())
 
     return app
 
-
-def _seed_or_fix_default_admin():
-    email = "diretoria@school.com"
+def _seed_default_admin(app: Flask):
+    """
+    Cria o usuário padrão 'Diretoria' se não existir.
+    E-mail: diretoria@school.com
+    Senha: 123456
+    """
     try:
-        user = User.query.filter_by(email=email).first()
-        if user is None:
-            user = User(email=email, role=ROLE_DIRETORIA, active=True)
-            user.set_password("123456")
-            db.session.add(user)
+        exists = User.query.filter_by(email="diretoria@school.com").first()
+        if not exists:
+            u = User(
+                name="Diretoria",
+                email="diretoria@school.com",
+                role="Diretoria",
+            )
+            u.set_password("123456")
+            u.is_active = True  # garante campo setado
+            db.session.add(u)
             db.session.commit()
-            logging.info("Usuário padrão criado: %s", email)
+            app.logger.info("Usuário padrão criado.")
         else:
-            changed = False
-            if user.role != ROLE_DIRETORIA:
-                user.role = ROLE_DIRETORIA
-                changed = True
-            if not user.active:
-                user.active = True
-                changed = True
-            # senha padrão conforme solicitado
-            user.set_password("123456")
-            changed = True
-            if changed:
-                db.session.commit()
-                logging.info("Usuário padrão atualizado: %s", email)
-    except Exception as exc:
+            app.logger.info("Usuário padrão já existe.")
+    except Exception as e:
         db.session.rollback()
-        logging.error("Seed/ajuste do usuário padrão falhou: %s", exc)
+        app.logger.warning("Seed do usuário padrão falhou: %r", e)
 
-
-def _log_db_uri(app: Flask):
-    uri = app.config.get("SQLALCHEMY_DATABASE_URI", "")
-    if uri.startswith("sqlite:///"):
-        path = uri.replace("sqlite:///", "", 1)
-        data_dir = os.path.dirname(path)
-        logging.info("SQLite em: %s", path)
-        logging.info("DATA_DIR: %s", data_dir)
-    else:
-        logging.info("Banco externo em uso (DATABASE_URL).")
-
-
+# Se precisar expor a app p/ gunicorn como 'app:app'
 app = create_app()
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+    # Para rodar local
+    port = int(os.getenv("PORT", "8080"))
+    app.run(host="0.0.0.0", port=port, debug=True)

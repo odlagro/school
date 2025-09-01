@@ -1,50 +1,31 @@
-﻿import os
-from pathlib import Path
+﻿# config.py
+import os
+from urllib.parse import urlparse
 
-
-def _bool_env(name: str, default: bool) -> bool:
-    v = os.getenv(name)
-    if v is None:
-        return default
-    return v.strip().lower() in ("1", "true", "yes", "on")
-
-
-def _choose_data_dir() -> str:
+def _normalize_database_url(url: str) -> str:
     """
-    Retorna um diretório gravável para o SQLite:
-    - DATA_DIR (se definido)
-    - RAILWAY_VOLUME_MOUNT_PATH (se você estiver usando Volume no Railway)
-    - /tmp/school-data (sempre gravável no container)
+    Converte postgres:// -> postgresql+psycopg2:// quando necessário.
     """
-    return os.getenv("DATA_DIR") or os.getenv("RAILWAY_VOLUME_MOUNT_PATH") or "/tmp/school-data"
-
+    if url.startswith("postgres://"):
+        return url.replace("postgres://", "postgresql+psycopg2://", 1)
+    return url
 
 class Config:
-    # Sessão/CSRF
+    # SECRET_KEY de ambiente, com fallback (troque em produção)
     SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key-change-me")
     WTF_CSRF_ENABLED = True
 
-    # Banco de dados
-    DATABASE_URL = os.getenv("DATABASE_URL")  # se usar Postgres/MySQL no Railway
-    if DATABASE_URL and not DATABASE_URL.startswith("sqlite"):
-        # Ex.: postgres://...  / mysql://...
-        SQLALCHEMY_DATABASE_URI = DATABASE_URL
-        SQLALCHEMY_ENGINE_OPTIONS = {"pool_pre_ping": True}
+    # DATABASE_URL (Railway Postgres) OU fallback para SQLite em /tmp
+    _db_url = os.getenv("DATABASE_URL", "").strip()
+    if _db_url:
+        SQLALCHEMY_DATABASE_URI = _normalize_database_url(_db_url)
     else:
-        data_dir = _choose_data_dir()
-        Path(data_dir).mkdir(parents=True, exist_ok=True)
-        db_path = Path(data_dir) / "school.db"
-        SQLALCHEMY_DATABASE_URI = f"sqlite:///{db_path}"
-        # Para SQLite sob Gunicorn / threads
-        SQLALCHEMY_ENGINE_OPTIONS = {
-            "pool_pre_ping": True,
-            "connect_args": {"check_same_thread": False},
-        }
+        # Sempre gravável no Railway
+        SQLALCHEMY_DATABASE_URI = "sqlite:////tmp/school.db"
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
-    # Cookies/proxy (produção HTTPS)
-    SESSION_COOKIE_SAMESITE = "Lax"
-    SESSION_COOKIE_SECURE = _bool_env("SESSION_COOKIE_SECURE", True)
-    REMEMBER_COOKIE_SECURE = _bool_env("REMEMBER_COOKIE_SECURE", True)
-    PREFERRED_URL_SCHEME = os.getenv("PREFERRED_URL_SCHEME", "https")
+    # Outras configs úteis
+    SESSION_COOKIE_HTTPONLY = True
+    REMEMBER_COOKIE_HTTPONLY = True
+    PREFERRED_URL_SCHEME = "https"
